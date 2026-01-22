@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English AI Master - Hoa Khuong 2</title>
+    <style>
+        :root { --blue: #0056b3; --orange: #f3722c; --green: #28a745; --bg: #f0f7ff; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; padding: 10px; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 25px; border-radius: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+        .setup-box { background: #fdfdfd; padding: 20px; border-radius: 20px; border: 2px solid #eef2f7; margin-bottom: 20px; }
+        select, input { width: 100%; padding: 15px; margin: 8px 0; border-radius: 12px; border: 2px solid #ddd; font-size: 16px; transition: 0.3s; }
+        select:focus, input:focus { border-color: var(--blue); outline: none; }
+        .chat-box { min-height: 200px; background: #fff; border: 3px solid #f0f4f8; border-radius: 25px; padding: 30px; display: flex; flex-direction: column; align-items: center; text-align: center; margin-bottom: 20px; box-shadow: inset 0 2px 10px rgba(0,0,0,0.02); }
+        .ai-msg { font-size: 24px; color: var(--blue); font-weight: bold; margin-bottom: 15px; }
+        .user-msg { font-size: 18px; color: #666; font-style: italic; border-top: 1px solid #eee; padding-top: 15px; width: 100%; }
+        .btn-speak { width: 100%; padding: 20px; border: none; border-radius: 50px; font-size: 22px; font-weight: bold; cursor: pointer; background: var(--blue); color: white; box-shadow: 0 5px 15px rgba(0,86,179,0.3); }
+        .recording { background: #e63946 !important; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(0.98); } 100% { transform: scale(1); } }
+        .feedback-area { background: #fff9db; padding: 15px; border-radius: 15px; margin-top: 15px; display: none; border-left: 5px solid #fab005; }
+        .word-bad { color: var(--orange); text-decoration: underline; cursor: pointer; font-weight: bold; }
+        .word-good { color: var(--green); font-weight: bold; }
+        .cert { display: none; text-align: center; border: 15px double #d4af37; padding: 40px; margin-top: 30px; background: #fff; position: relative; }
+        .cert h2 { color: #8b4513; font-size: 30px; margin: 0; }
+        .sign-box { display: flex; justify-content: space-between; margin-top: 50px; font-size: 18px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 style="text-align:center; color:var(--blue);">🎤 English Master AI - Hoa Khương 2</h1>
+
+    <div class="setup-box">
+        <input id="stdName" placeholder="Enter student's name..." oninput="localStorage.setItem('n', this.value)">
+        <select id="mode" onchange="initApp()">
+            <option value="ai-ask">AI hỏi - Học sinh trả lời (20 Unit lớp 5)</option>
+            <option value="std-ask">Học sinh hỏi - Alex trả lời (Alex Thông Minh)</option>
+        </select>
+        <div id="unitSelectBox">
+            <select id="unitId" onchange="initApp()"></select>
+        </div>
+    </div>
+
+    <div class="chat-box">
+        <div id="aiMsg" class="ai-msg">Hello! I'm Alex. Let's practice!</div>
+        <div id="userMsg" class="user-msg">... waiting for you ...</div>
+    </div>
+
+    <button id="micBtn" class="btn-speak" onclick="toggleMic()">🎙 NHẤN ĐỂ NÓI</button>
+
+    <div id="feedback" class="feedback-area">
+        <div id="wordList" style="font-size: 20px;"></div>
+    </div>
+
+    <div id="cert" class="cert">
+        <h2>CERTIFICATE OF EXCELLENCE</h2>
+        <p>This is to certify that</p>
+        <h1 id="certName" style="color:#1a237e; border-bottom: 2px solid #eee; display:inline-block; min-width: 200px;"></h1>
+        <p>Has successfully completed the English Speaking Challenge!</p>
+        <div style="font-size:50px; margin: 20px 0;">⭐⭐⭐⭐⭐</div>
+        <p style="color:var(--green); font-weight:bold; font-size: 20px;">Excellent work! Please talk to me more often to be better!</p>
+        <div class="sign-box">
+            <div>Mrs Tran Thi Kim Yen</div>
+            <div>Mrs Pham Thi Ngoc Bich</div>
+        </div>
+    </div>
+</div>
+
+<script>
+// DỮ LIỆU CHÍNH XÁC THEO FILE CỦA CÔ
+const unitData = {
+    1: { name: "Unit 1: All about me", qs: ["Can you tell me about yourself?", "Where do you live?", "What's your favourite colour?", "What's your favourite animal?", "What's your favourite food?", "What's your favourite sport?"] },
+    2: { name: "Unit 2: Our homes", qs: ["Do you live in this house?", "Do you live in this flat?", "What's your address?"] },
+    3: { name: "Unit 3: My foreign friends", qs: ["What nationality is he or she?", "What's he or she like?"] },
+    4: { name: "Unit 4: Our free-time activities", qs: ["What do you like doing in your free time?", "What do you do at the weekend?"] },
+    5: { name: "Unit 5: My future job", qs: ["What would you like to be in the future?", "Why would you like to be [job]?"] },
+    6: { name: "Unit 6: Our school rooms", qs: ["Could you tell me the way to the art room, please?", "Where's the music room?"] },
+    7: { name: "Unit 7: Our favourite school activities", qs: ["What school activity does she like?", "Why does she like it?"] },
+    8: { name: "Unit 8: In our classroom", qs: ["Where are the crayons?", "Whose pen is this?"] },
+    9: { name: "Unit 9: Our outdoor activities", qs: ["Were you at the campsite last week?", "What did you do yesterday?"] },
+    10: { name: "Unit 10: Our school trip", qs: ["Did they go to Ba Na Hills?", "What did they do there?"] },
+    11: { name: "Unit 11: Ha Long Bay", qs: ["Did you swim?", "What did your family do in Ha Long Bay?"] },
+    12: { name: "Unit 12: Tet in Vietnam", qs: ["Will you make banh chung for Tet?", "Where will you go at Tet?"] },
+    13: { name: "Unit 13: School Festivals", qs: ["What will you do on Children's Day?", "What food will you have at the party?"] },
+    14: { name: "Unit 14: Staying Healthy", qs: ["How do you stay healthy?", "How often do you do yoga?"] },
+    15: { name: "Unit 15: Health problems", qs: ["What's the matter?", "What should I do for a headache?"] },
+    16: { name: "Unit 16: Seasons and Weather", qs: ["How's the weather in Ha Noi in summer?", "What do you usually wear in winter?"] },
+    17: { name: "Unit 17: Fairy Tales", qs: ["Who are the main characters in the story?", "How did the crow sing?"] },
+    18: { name: "Unit 18: Landmarks", qs: ["Where do you want to visit?", "How can I get to Dragon Bridge?"] },
+    19: { name: "Unit 19: Comparing Places", qs: ["What do you think of Hoi An Old Town?", "How far is it from Da Nang to Hoi An?"] },
+    20: { name: "Unit 20: Summer Plans", qs: ["Where are you going to visit this summer?", "What are you going to do?"] }
+};
+
+// BỘ NÃO CHI TIẾT CỦA ALEX (Hồ sơ học sinh mẫu mực)
+const alexProfile = {
+    name: "My name is Alex. I am 11 years old.",
+    class: "I'm in class 5/3. My school is Oxford Primary School.",
+    address: "I live at 65 Le Loi Street. It's in the city.",
+    family: "There are four people in my family: my parents, my younger sister and me. My father is a doctor and my mother is a teacher.",
+    hobby: "I like riding my bike and playing the violin in my free time.",
+    future: "I'd like to be a pilot because I'd like to fly planes and visit many countries.",
+    weekend: "At the weekend, I usually surf the Internet and help my parents with the housework.",
+    food: "My favourite food is sandwich and I like apple juice.",
+    origin: "I am from London, Britain. I am British.",
+    match: function(input) {
+        let s = input.toLowerCase();
+        if(s.includes("name") || s.includes("who are you")) return this.name;
+        if(s.includes("class") || s.includes("school")) return this.class;
+        if(s.includes("live") || s.includes("address")) return this.address;
+        if(s.includes("family") || s.includes("father") || s.includes("mother")) return this.family;
+        if(s.includes("hobby") || s.includes("free time") || s.includes("like doing")) return this.hobby;
+        if(s.includes("future") || s.includes("want to be") || s.includes("job")) return this.future;
+        if(s.includes("weekend")) return this.weekend;
+        if(s.includes("food") || s.includes("drink")) return this.food;
+        if(s.includes("from") || s.includes("nationality")) return this.origin;
+        if(s.includes("weather")) return "The weather in my city is often cool and rainy.";
+        if(s.includes("yesterday") || s.includes("last")) return "Yesterday, I stayed at home and listened to music.";
+        return "That's an interesting question! I am a student at Oxford School. What about you?";
+    }
+};
+
+let currentQIdx = 0;
+let isRec = false;
+let currentJob = "a teacher";
+const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+recognition.lang = 'en-US';
+
+function initApp() {
+    const mode = document.getElementById('mode').value;
+    const unitSelect = document.getElementById('unitId');
+    if(unitSelect.innerHTML === "") {
+        for(let i=1; i<=20; i++) {
+            let opt = document.createElement('option');
+            opt.value = i; opt.innerText = unitData[i].name;
+            unitSelect.appendChild(opt);
+        }
+    }
+    
+    currentQIdx = 0;
+    document.getElementById('cert').style.display = 'none';
+    document.getElementById('feedback').style.display = 'none';
+    document.getElementById('unitSelectBox').style.display = (mode === 'ai-ask') ? 'block' : 'none';
+    
+    let msg = (mode === 'ai-ask') ? unitData[unitSelect.value].qs[0] : "Hi! I'm Alex. I'm 11 years old. I live at 65 Le Loi Street. Ask me anything!";
+    document.getElementById('aiMsg').innerText = msg;
+    speak(msg);
+}
+
+function toggleMic() {
+    if(isRec) { recognition.stop(); return; }
+    recognition.start();
+    isRec = true;
+    document.getElementById('micBtn').classList.add('recording');
+    document.getElementById('micBtn').innerText = "🛑 ALEX IS LISTENING...";
+}
+
+recognition.onresult = (e) => {
+    let said = e.results[0][0].transcript;
+    document.getElementById('userMsg').innerText = said;
+    const mode = document.getElementById('mode').value;
+
+    if(mode === 'ai-ask') {
+        const uId = document.getElementById('unitId').value;
+        const qs = unitData[uId].qs;
+        
+        // Cập nhật nghề nghiệp để hỏi câu tiếp theo (Unit 5)
+        if(said.toLowerCase().includes("doctor")) currentJob = "a doctor";
+        if(said.toLowerCase().includes("pilot")) currentJob = "a pilot";
+        if(said.toLowerCase().includes("reporter")) currentJob = "a reporter";
+
+        currentQIdx++;
+        if(currentQIdx < qs.length) {
+            let nextQ = qs[currentQIdx].replace("[job]", currentJob);
+            setTimeout(() => { document.getElementById('aiMsg').innerText = nextQ; speak(nextQ); }, 1500);
+        } else {
+            setTimeout(finish, 1500);
+        }
+    } else {
+        let reply = alexProfile.match(said);
+        document.getElementById('aiMsg').innerText = reply;
+        speak(reply);
+    }
+    showFeedback(said, e.results[0][0].confidence);
+};
+
+recognition.onend = () => {
+    isRec = false;
+    document.getElementById('micBtn').classList.remove('recording');
+    document.getElementById('micBtn').innerText = "🎙 NHẤN ĐỂ NÓI";
+};
+
+function showFeedback(text, conf) {
+    document.getElementById('feedback').style.display = 'block';
+    let html = "<b>Phát âm: </b>";
+    text.split(" ").forEach(w => {
+        html += (conf > 0.85) ? `<span class="word-good">${w}</span> ` : `<span class="word-bad" onclick="speak('${w}')">${w}</span> `;
+    });
+    document.getElementById('wordList').innerHTML = html;
+}
+
+function speak(t) {
+    window.speechSynthesis.cancel();
+    let m = new SpeechSynthesisUtterance(t);
+    m.lang = 'en-US'; m.rate = 0.9;
+    window.speechSynthesis.speak(m);
+}
+
+function finish() {
+    document.getElementById('cert').style.display = 'block';
+    document.getElementById('certName').innerText = document.getElementById('stdName').value || "Amazing Student";
+    document.getElementById('cert').scrollIntoView({behavior:'smooth'});
+}
+
+window.onload = () => { 
+    document.getElementById('stdName').value = localStorage.getItem('n') || "";
+    initApp(); 
+};
+</script>
+</body>
+</html>
